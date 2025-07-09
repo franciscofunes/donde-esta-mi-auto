@@ -564,10 +564,7 @@
                     longitude,
                     address,
                     timestamp: new Date().toISOString(),
-                    userId: currentUser.uid,
-                    userEmail: currentUser.email,
-                    domain: window.location.hostname,
-                    lastUpdated: new Date().toISOString()
+                    userId: currentUser.uid
                 };
 
                 showStatus('☁️ Guardando en la nube...', 'loading');
@@ -641,32 +638,24 @@
             }
         }
 
-        // Authentication
+        // Authentication with fallback
         async function signInWithGoogle() {
             try {
                 loginBtn.disabled = true;
                 loginBtn.classList.add('disabled');
                 showStatus('🔐 Iniciando sesión...', 'loading');
 
-                // For mobile devices, use redirect directly
-                const isMobile = /mobile|android|iphone|ipad/i.test(navigator.userAgent);
-                
-                if (isMobile) {
-                    showStatus('🔄 Redirigiendo para iniciar sesión...', 'loading');
-                    await signInWithRedirect(auth, provider);
-                    return;
-                }
-
-                // Try popup for desktop
+                // Try popup first
                 try {
                     const result = await signInWithPopup(auth, provider);
                     showStatus('✅ ¡Sesión iniciada exitosamente!', 'success');
                 } catch (popupError) {
                     console.log('Popup failed, trying redirect:', popupError);
                     
-                    // If popup fails, fallback to redirect
+                    // If popup fails, try redirect (better for mobile)
                     if (popupError.code === 'auth/popup-blocked' || 
-                        popupError.code === 'auth/popup-closed-by-user') {
+                        popupError.code === 'auth/popup-closed-by-user' ||
+                        /mobile|android|iphone|ipad/i.test(navigator.userAgent)) {
                         
                         showStatus('🔄 Redirigiendo para iniciar sesión...', 'loading');
                         await signInWithRedirect(auth, provider);
@@ -676,27 +665,20 @@
                 }
             } catch (error) {
                 console.error('Error signing in:', error);
-                
-                let errorMessage = '';
+                let errorMessage = 'Error al iniciar sesión. ';
                 
                 switch(error.code) {
                     case 'auth/unauthorized-domain':
-                        errorMessage = '🚫 Dominio no autorizado. El administrador debe agregar este dominio en Firebase Console.';
+                        errorMessage += 'Dominio no autorizado. Contacta al administrador.';
                         break;
                     case 'auth/operation-not-allowed':
-                        errorMessage = '🚫 Google Sign-in no está habilitado. Verifica la configuración en Firebase Console.';
+                        errorMessage += 'Método de autenticación no habilitado.';
                         break;
                     case 'auth/popup-closed-by-user':
-                        errorMessage = '❌ Inicio de sesión cancelado por el usuario.';
-                        break;
-                    case 'auth/network-request-failed':
-                        errorMessage = '🌐 Error de conexión. Verifica tu internet e inténtalo de nuevo.';
-                        break;
-                    case 'auth/too-many-requests':
-                        errorMessage = '⏰ Demasiados intentos. Espera un momento e inténtalo de nuevo.';
+                        errorMessage = 'Inicio de sesión cancelado.';
                         break;
                     default:
-                        errorMessage = `❌ Error: ${error.message || 'Error desconocido'}. Código: ${error.code || 'N/A'}`;
+                        errorMessage += 'Inténtalo de nuevo.';
                 }
                 
                 showStatus(errorMessage, 'error');
@@ -722,10 +704,8 @@
                 currentUser = user;
                 authSection.classList.add('hidden');
                 appContent.classList.remove('hidden');
-                
                 userAvatar.src = user.photoURL || 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40"><circle cx="20" cy="20" r="20" fill="%23e2e8f0"/><circle cx="20" cy="16" r="6" fill="%23a0aec0"/><path d="M20 24c-8 0-12 4-12 8v8h24v-8c0-4-4-8-12-8z" fill="%23a0aec0"/></svg>';
                 userName.textContent = user.displayName || user.email || 'Usuario';
-                
                 loadParkingInfo();
             } else {
                 currentUser = null;
