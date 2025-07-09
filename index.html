@@ -399,6 +399,22 @@
             </div>
             
             <div id="app-content" class="hidden">
+                <div id="verification-section" class="hidden">
+                    <div class="status error">
+                        <h3 style="margin-bottom: 12px;">📧 Verificación de Email Requerida</h3>
+                        <p style="margin-bottom: 16px;">Para usar la app necesitas verificar tu email. Hemos enviado un enlace de verificación.</p>
+                        <button id="resend-verification-btn" class="btn btn-primary" style="margin-bottom: 12px;">
+                            <span>📨</span>
+                            Reenviar Email de Verificación
+                        </button>
+                        <button id="check-verification-btn" class="btn btn-secondary">
+                            <span>🔄</span>
+                            Ya Verifiqué mi Email
+                        </button>
+                    </div>
+                </div>
+
+                <div id="main-app" class="hidden">
                 <div class="user-section">
                     <img id="user-avatar" class="user-avatar" src="" alt="User">
                     <div class="user-info">
@@ -434,7 +450,7 @@
     <!-- Firebase SDK -->
     <script type="module">
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
-        import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, signOut, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
+        import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, signOut, onAuthStateChanged, sendEmailVerification, reload } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
         import { getFirestore, doc, setDoc, getDoc, deleteDoc } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 
         // Firebase configuration
@@ -475,8 +491,36 @@
         const userAvatar = document.getElementById('user-avatar');
         const userName = document.getElementById('user-name');
         const status = document.getElementById('status');
+        const verificationSection = document.getElementById('verification-section');
+        const mainApp = document.getElementById('main-app');
+        const resendVerificationBtn = document.getElementById('resend-verification-btn');
+        const checkVerificationBtn = document.getElementById('check-verification-btn');
 
-        let currentUser = null;
+        // Security: Check if request is from authorized domain
+        function isAuthorizedDomain() {
+            const authorizedDomains = [
+                'localhost',
+                '127.0.0.1',
+                'mi-auto-zfcj.vercel.app',
+                'dondeestamiauto.vercel.app'
+            ];
+            
+            const currentDomain = window.location.hostname;
+            return authorizedDomains.includes(currentDomain);
+        }
+
+        // Initialize security check
+        if (!isAuthorizedDomain()) {
+            document.body.innerHTML = `
+                <div style="display: flex; justify-content: center; align-items: center; height: 100vh; text-align: center; padding: 20px;">
+                    <div style="background: white; padding: 40px; border-radius: 20px; box-shadow: 0 20px 40px rgba(0,0,0,0.1);">
+                        <h1>🚫 Acceso No Autorizado</h1>
+                        <p>Esta aplicación solo puede ser accedida desde dominios autorizados.</p>
+                    </div>
+                </div>
+            `;
+            throw new Error('Unauthorized domain');
+        }
 
         // Show status message
         function showStatus(message, type = 'success') {
@@ -540,9 +584,16 @@
             }
         }
 
-        // Save parking location
         async function saveParkingLocation() {
-            if (!currentUser) return;
+            if (!currentUser) {
+                showStatus('❌ Usuario no autenticado.', 'error');
+                return;
+            }
+
+            if (!currentUser.emailVerified) {
+                showStatus('❌ Debes verificar tu email antes de guardar ubicaciones.', 'error');
+                return;
+            }
 
             try {
                 saveBtnText.textContent = 'Obteniendo ubicación...';
@@ -564,7 +615,10 @@
                     longitude,
                     address,
                     timestamp: new Date().toISOString(),
-                    userId: currentUser.uid
+                    userId: currentUser.uid,
+                    userEmail: currentUser.email,
+                    domain: window.location.hostname,
+                    lastUpdated: new Date().toISOString()
                 };
 
                 showStatus('☁️ Guardando en la nube...', 'loading');
@@ -575,7 +629,12 @@
 
             } catch (error) {
                 console.error('Error saving location:', error);
-                showStatus(error.message || 'Error al guardar la ubicación. Inténtalo de nuevo.', 'error');
+                
+                if (error.code === 'permission-denied') {
+                    showStatus('❌ Acceso denegado. Verifica que tu email esté verificado.', 'error');
+                } else {
+                    showStatus(error.message || 'Error al guardar la ubicación. Inténtalo de nuevo.', 'error');
+                }
             } finally {
                 saveBtnText.textContent = 'Guardar ubicación actual';
                 saveBtnIcon.classList.remove('hidden');
@@ -585,9 +644,9 @@
             }
         }
 
-        // Load parking info
+        // Load parking info with security check
         async function loadParkingInfo() {
-            if (!currentUser) return;
+            if (!currentUser || !currentUser.emailVerified) return;
 
             try {
                 const docRef = doc(db, 'parking_locations', currentUser.uid);
@@ -616,7 +675,12 @@
                 }
             } catch (error) {
                 console.error('Error loading parking info:', error);
-                showStatus('Error al cargar la información del estacionamiento.', 'error');
+                
+                if (error.code === 'permission-denied') {
+                    showStatus('❌ Acceso denegado. Verifica que tu email esté verificado.', 'error');
+                } else {
+                    showStatus('Error al cargar la información del estacionamiento.', 'error');
+                }
             }
         }
 
@@ -645,17 +709,31 @@
                 loginBtn.classList.add('disabled');
                 showStatus('🔐 Iniciando sesión...', 'loading');
 
-                // Try popup first
+                // For mobile devices, use redirect directly
+                const isMobile = /mobile|android|iphone|ipad/i.test(navigator.userAgent);
+                
+                if (isMobile) {
+                    showStatus('🔄 Redirigiendo para iniciar sesión...', 'loading');
+                    await signInWithRedirect(auth, provider);
+                    return;
+                }
+
+                // Try popup for desktop
                 try {
                     const result = await signInWithPopup(auth, provider);
+                    
+                    // Check if email is verified
+                    if (!result.user.emailVerified) {
+                        await sendVerificationEmail();
+                    }
+                    
                     showStatus('✅ ¡Sesión iniciada exitosamente!', 'success');
                 } catch (popupError) {
                     console.log('Popup failed, trying redirect:', popupError);
                     
-                    // If popup fails, try redirect (better for mobile)
+                    // If popup fails, fallback to redirect
                     if (popupError.code === 'auth/popup-blocked' || 
-                        popupError.code === 'auth/popup-closed-by-user' ||
-                        /mobile|android|iphone|ipad/i.test(navigator.userAgent)) {
+                        popupError.code === 'auth/popup-closed-by-user') {
                         
                         showStatus('🔄 Redirigiendo para iniciar sesión...', 'loading');
                         await signInWithRedirect(auth, provider);
@@ -665,20 +743,29 @@
                 }
             } catch (error) {
                 console.error('Error signing in:', error);
-                let errorMessage = 'Error al iniciar sesión. ';
+                console.error('Error code:', error.code);
+                console.error('Error message:', error.message);
+                
+                let errorMessage = '';
                 
                 switch(error.code) {
                     case 'auth/unauthorized-domain':
-                        errorMessage += 'Dominio no autorizado. Contacta al administrador.';
+                        errorMessage = '🚫 Dominio no autorizado. El administrador debe agregar este dominio en Firebase Console.';
                         break;
                     case 'auth/operation-not-allowed':
-                        errorMessage += 'Método de autenticación no habilitado.';
+                        errorMessage = '🚫 Google Sign-in no está habilitado. Verifica la configuración en Firebase Console.';
                         break;
                     case 'auth/popup-closed-by-user':
-                        errorMessage = 'Inicio de sesión cancelado.';
+                        errorMessage = '❌ Inicio de sesión cancelado por el usuario.';
+                        break;
+                    case 'auth/network-request-failed':
+                        errorMessage = '🌐 Error de conexión. Verifica tu internet e inténtalo de nuevo.';
+                        break;
+                    case 'auth/too-many-requests':
+                        errorMessage = '⏰ Demasiados intentos. Espera un momento e inténtalo de nuevo.';
                         break;
                     default:
-                        errorMessage += 'Inténtalo de nuevo.';
+                        errorMessage = `❌ Error: ${error.message || 'Error desconocido'}. Código: ${error.code || 'N/A'}`;
                 }
                 
                 showStatus(errorMessage, 'error');
@@ -704,13 +791,26 @@
                 currentUser = user;
                 authSection.classList.add('hidden');
                 appContent.classList.remove('hidden');
+                
                 userAvatar.src = user.photoURL || 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40"><circle cx="20" cy="20" r="20" fill="%23e2e8f0"/><circle cx="20" cy="16" r="6" fill="%23a0aec0"/><path d="M20 24c-8 0-12 4-12 8v8h24v-8c0-4-4-8-12-8z" fill="%23a0aec0"/></svg>';
                 userName.textContent = user.displayName || user.email || 'Usuario';
-                loadParkingInfo();
+                
+                // Check email verification
+                if (!user.emailVerified) {
+                    verificationSection.classList.remove('hidden');
+                    mainApp.classList.add('hidden');
+                    parkingInfo.classList.add('hidden');
+                } else {
+                    verificationSection.classList.add('hidden');
+                    mainApp.classList.remove('hidden');
+                    loadParkingInfo();
+                }
             } else {
                 currentUser = null;
                 authSection.classList.remove('hidden');
                 appContent.classList.add('hidden');
+                verificationSection.classList.add('hidden');
+                mainApp.classList.add('hidden');
                 parkingInfo.classList.add('hidden');
             }
         }
@@ -720,6 +820,8 @@
         logoutBtn.addEventListener('click', signOutUser);
         saveLocationBtn.addEventListener('click', saveParkingLocation);
         clearLocationBtn.addEventListener('click', clearParkingLocation);
+        resendVerificationBtn.addEventListener('click', sendVerificationEmail);
+        checkVerificationBtn.addEventListener('click', checkEmailVerification);
 
         // Auth state observer
         onAuthStateChanged(auth, updateUI);
@@ -727,6 +829,10 @@
         // Check for redirect result on page load
         getRedirectResult(auth).then((result) => {
             if (result) {
+                // Check if email is verified after redirect
+                if (!result.user.emailVerified) {
+                    sendVerificationEmail();
+                }
                 showStatus('✅ ¡Sesión iniciada exitosamente!', 'success');
             }
         }).catch((error) => {
