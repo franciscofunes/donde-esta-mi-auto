@@ -408,41 +408,24 @@
                         </button>
                     </div>
                 </div>
-
-                <div id="verification-section" class="hidden">
-                    <div class="status error">
-                        <h3 style="margin-bottom: 12px;">📧 Verificación de Email Requerida</h3>
-                        <p style="margin-bottom: 16px;">Para usar la app necesitas verificar tu email. Hemos enviado un enlace de verificación.</p>
-                        <button id="resend-verification-btn" class="btn btn-primary" style="margin-bottom: 12px;">
-                            <span>📨</span>
-                            Reenviar Email de Verificación
-                        </button>
-                        <button id="check-verification-btn" class="btn btn-secondary">
-                            <span>🔄</span>
-                            Ya Verifiqué mi Email
-                        </button>
-                    </div>
-                </div>
-
-                <div id="main-app" class="hidden">
-                    <button id="save-location-btn" class="btn btn-success">
-                        <span id="save-btn-icon">📍</span>
-                        <span id="save-btn-text">Guardar ubicación actual</span>
-                        <div id="save-loading" class="loading-spinner hidden"></div>
+                
+                <button id="save-location-btn" class="btn btn-success">
+                    <span id="save-btn-icon">📍</span>
+                    <span id="save-btn-text">Guardar ubicación actual</span>
+                    <div id="save-loading" class="loading-spinner hidden"></div>
+                </button>
+                
+                <div id="parking-info" class="parking-card hidden">
+                    <div class="parking-time" id="parking-time"></div>
+                    <div class="parking-address" id="parking-address"></div>
+                    <a id="map-link" class="map-link" href="#" target="_blank">
+                        <span>🗺️</span>
+                        Ver en Google Maps
+                    </a>
+                    <button id="clear-location-btn" class="btn btn-danger" style="margin-top: 16px;">
+                        <span>🗑️</span>
+                        Limpiar ubicación
                     </button>
-                    
-                    <div id="parking-info" class="parking-card hidden">
-                        <div class="parking-time" id="parking-time"></div>
-                        <div class="parking-address" id="parking-address"></div>
-                        <a id="map-link" class="map-link" href="#" target="_blank">
-                            <span>🗺️</span>
-                            Ver en Google Maps
-                        </a>
-                        <button id="clear-location-btn" class="btn btn-danger" style="margin-top: 16px;">
-                            <span>🗑️</span>
-                            Limpiar ubicación
-                        </button>
-                    </div>
                 </div>
             </div>
         </div>
@@ -451,7 +434,7 @@
     <!-- Firebase SDK -->
     <script type="module">
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
-        import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, signOut, onAuthStateChanged, sendEmailVerification, reload } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
+        import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, signOut, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
         import { getFirestore, doc, setDoc, getDoc, deleteDoc } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 
         // Firebase configuration
@@ -492,36 +475,8 @@
         const userAvatar = document.getElementById('user-avatar');
         const userName = document.getElementById('user-name');
         const status = document.getElementById('status');
-        const verificationSection = document.getElementById('verification-section');
-        const mainApp = document.getElementById('main-app');
-        const resendVerificationBtn = document.getElementById('resend-verification-btn');
-        const checkVerificationBtn = document.getElementById('check-verification-btn');
 
-        // Security: Check if request is from authorized domain
-        function isAuthorizedDomain() {
-            const authorizedDomains = [
-                'localhost',
-                '127.0.0.1',
-                'mi-auto-zfcj.vercel.app',
-                'dondeestamiauto.vercel.app'
-            ];
-            
-            const currentDomain = window.location.hostname;
-            return authorizedDomains.includes(currentDomain);
-        }
-
-        // Initialize security check
-        if (!isAuthorizedDomain()) {
-            document.body.innerHTML = `
-                <div style="display: flex; justify-content: center; align-items: center; height: 100vh; text-align: center; padding: 20px;">
-                    <div style="background: white; padding: 40px; border-radius: 20px; box-shadow: 0 20px 40px rgba(0,0,0,0.1);">
-                        <h1>🚫 Acceso No Autorizado</h1>
-                        <p>Esta aplicación solo puede ser accedida desde dominios autorizados.</p>
-                    </div>
-                </div>
-            `;
-            throw new Error('Unauthorized domain');
-        }
+        let currentUser = null;
 
         // Show status message
         function showStatus(message, type = 'success') {
@@ -567,6 +522,7 @@
             });
         }
 
+        // Get address from coordinates
         async function getAddressFromCoords(lat, lng) {
             try {
                 const response = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lng}&localityLanguage=es`);
@@ -584,17 +540,9 @@
             }
         }
 
-        // Save parking location with additional security
+        // Save parking location
         async function saveParkingLocation() {
-            if (!currentUser) {
-                showStatus('❌ Usuario no autenticado.', 'error');
-                return;
-            }
-
-            if (!currentUser.emailVerified) {
-                showStatus('❌ Debes verificar tu email antes de guardar ubicaciones.', 'error');
-                return;
-            }
+            if (!currentUser) return;
 
             try {
                 saveBtnText.textContent = 'Obteniendo ubicación...';
@@ -630,12 +578,7 @@
 
             } catch (error) {
                 console.error('Error saving location:', error);
-                
-                if (error.code === 'permission-denied') {
-                    showStatus('❌ Acceso denegado. Verifica que tu email esté verificado.', 'error');
-                } else {
-                    showStatus(error.message || 'Error al guardar la ubicación. Inténtalo de nuevo.', 'error');
-                }
+                showStatus(error.message || 'Error al guardar la ubicación. Inténtalo de nuevo.', 'error');
             } finally {
                 saveBtnText.textContent = 'Guardar ubicación actual';
                 saveBtnIcon.classList.remove('hidden');
@@ -645,9 +588,9 @@
             }
         }
 
-        // Load parking info with security check
+        // Load parking info
         async function loadParkingInfo() {
-            if (!currentUser || !currentUser.emailVerified) return;
+            if (!currentUser) return;
 
             try {
                 const docRef = doc(db, 'parking_locations', currentUser.uid);
@@ -676,12 +619,7 @@
                 }
             } catch (error) {
                 console.error('Error loading parking info:', error);
-                
-                if (error.code === 'permission-denied') {
-                    showStatus('❌ Acceso denegado. Verifica que tu email esté verificado.', 'error');
-                } else {
-                    showStatus('Error al cargar la información del estacionamiento.', 'error');
-                }
+                showStatus('Error al cargar la información del estacionamiento.', 'error');
             }
         }
 
@@ -703,7 +641,7 @@
             }
         }
 
-        // Authentication with fallback
+        // Authentication
         async function signInWithGoogle() {
             try {
                 loginBtn.disabled = true;
@@ -722,7 +660,6 @@
                 // Try popup for desktop
                 try {
                     const result = await signInWithPopup(auth, provider);
-                    console.log('Login successful:', result.user.email);
                     showStatus('✅ ¡Sesión iniciada exitosamente!', 'success');
                 } catch (popupError) {
                     console.log('Popup failed, trying redirect:', popupError);
@@ -739,8 +676,6 @@
                 }
             } catch (error) {
                 console.error('Error signing in:', error);
-                console.error('Error code:', error.code);
-                console.error('Error message:', error.message);
                 
                 let errorMessage = '';
                 
@@ -785,32 +720,17 @@
         function updateUI(user) {
             if (user) {
                 currentUser = user;
-                console.log('User logged in:', user.email, 'Email verified:', user.emailVerified);
-                
                 authSection.classList.add('hidden');
                 appContent.classList.remove('hidden');
                 
                 userAvatar.src = user.photoURL || 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40"><circle cx="20" cy="20" r="20" fill="%23e2e8f0"/><circle cx="20" cy="16" r="6" fill="%23a0aec0"/><path d="M20 24c-8 0-12 4-12 8v8h24v-8c0-4-4-8-12-8z" fill="%23a0aec0"/></svg>';
                 userName.textContent = user.displayName || user.email || 'Usuario';
                 
-                // Check email verification - Google users are usually pre-verified
-                if (!user.emailVerified) {
-                    console.log('Email not verified, showing verification section');
-                    verificationSection.classList.remove('hidden');
-                    mainApp.classList.add('hidden');
-                } else {
-                    console.log('Email verified, showing main app');
-                    verificationSection.classList.add('hidden');
-                    mainApp.classList.remove('hidden');
-                    loadParkingInfo();
-                }
+                loadParkingInfo();
             } else {
-                console.log('User logged out');
                 currentUser = null;
                 authSection.classList.remove('hidden');
                 appContent.classList.add('hidden');
-                verificationSection.classList.add('hidden');
-                mainApp.classList.add('hidden');
                 parkingInfo.classList.add('hidden');
             }
         }
@@ -820,8 +740,6 @@
         logoutBtn.addEventListener('click', signOutUser);
         saveLocationBtn.addEventListener('click', saveParkingLocation);
         clearLocationBtn.addEventListener('click', clearParkingLocation);
-        resendVerificationBtn.addEventListener('click', sendVerificationEmail);
-        checkVerificationBtn.addEventListener('click', checkEmailVerification);
 
         // Auth state observer
         onAuthStateChanged(auth, updateUI);
@@ -829,7 +747,6 @@
         // Check for redirect result on page load
         getRedirectResult(auth).then((result) => {
             if (result) {
-                console.log('Redirect login successful:', result.user.email);
                 showStatus('✅ ¡Sesión iniciada exitosamente!', 'success');
             }
         }).catch((error) => {
