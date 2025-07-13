@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -67,7 +67,7 @@
         }
 
         .container {
-            max-width: 400px;
+            max-width: 450px;
             margin: 0 auto;
             position: relative;
             z-index: 1;
@@ -262,6 +262,14 @@
             margin: 0;
         }
 
+        .btn-small {
+            padding: 8px 16px;
+            font-size: 12px;
+            width: auto;
+            margin: 0;
+            margin-left: 8px;
+        }
+
         .parking-card {
             background: linear-gradient(135deg, #f8fafc, #e2e8f0);
             padding: 24px;
@@ -269,6 +277,26 @@
             margin-bottom: 24px;
             border: 1px solid rgba(226, 232, 240, 0.8);
             box-shadow: 0 4px 16px rgba(0, 0, 0, 0.05);
+            position: relative;
+        }
+
+        .parking-card.current {
+            background: linear-gradient(135deg, #d4edda, #c3e6cb);
+            border: 2px solid #34a853;
+            box-shadow: 0 4px 16px rgba(52, 168, 83, 0.2);
+        }
+
+        .current-badge {
+            position: absolute;
+            top: -8px;
+            right: 12px;
+            background: linear-gradient(135deg, #34a853, #2d8f47);
+            color: white;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            box-shadow: 0 2px 8px rgba(52, 168, 83, 0.3);
         }
 
         .parking-time {
@@ -278,12 +306,26 @@
             font-weight: 500;
         }
 
+        .parking-card.current .parking-time {
+            color: #155724;
+        }
+
         .parking-address {
             font-weight: 600;
             color: #2d3748;
             margin-bottom: 16px;
             font-size: 16px;
             line-height: 1.4;
+        }
+
+        .parking-card.current .parking-address {
+            color: #155724;
+        }
+
+        .parking-actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
         }
 
         .map-link {
@@ -298,6 +340,9 @@
             font-weight: 600;
             transition: all 0.3s ease;
             box-shadow: 0 4px 16px rgba(66, 133, 244, 0.3);
+            flex: 1;
+            justify-content: center;
+            min-width: 140px;
         }
 
         .map-link:hover {
@@ -340,6 +385,82 @@
             line-height: 1.5;
         }
 
+        .history-section {
+            margin-top: 24px;
+        }
+
+        .history-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 16px;
+            padding: 0 4px;
+        }
+
+        .history-title {
+            color: #2d3748;
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .history-toggle {
+            background: none;
+            border: none;
+            color: #4285f4;
+            font-weight: 600;
+            cursor: pointer;
+            padding: 8px;
+            border-radius: 8px;
+            transition: background-color 0.2s;
+        }
+
+        .history-toggle:hover {
+            background: rgba(66, 133, 244, 0.1);
+        }
+
+        .history-list {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .history-item {
+            background: rgba(255, 255, 255, 0.7);
+            border: 1px solid rgba(226, 232, 240, 0.5);
+            border-radius: 16px;
+            padding: 16px;
+            margin-bottom: 12px;
+            transition: all 0.2s ease;
+        }
+
+        .history-item:hover {
+            background: rgba(255, 255, 255, 0.9);
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .history-item .parking-time {
+            font-size: 12px;
+            margin-bottom: 8px;
+        }
+
+        .history-item .parking-address {
+            font-size: 14px;
+            margin-bottom: 12px;
+        }
+
+        .empty-history {
+            text-align: center;
+            color: #64748b;
+            padding: 40px 20px;
+            font-style: italic;
+        }
+
+        .section-divider {
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(226, 232, 240, 0.8), transparent);
+            margin: 24px 0;
+        }
+
         @media (max-width: 480px) {
             .container {
                 padding: 0 10px;
@@ -357,6 +478,14 @@
             .btn {
                 padding: 14px 20px;
                 font-size: 15px;
+            }
+
+            .parking-actions {
+                flex-direction: column;
+            }
+
+            .map-link {
+                min-width: auto;
             }
         }
 
@@ -415,17 +544,22 @@
                     <div id="save-loading" class="loading-spinner hidden"></div>
                 </button>
                 
-                <div id="parking-info" class="parking-card hidden">
-                    <div class="parking-time" id="parking-time"></div>
-                    <div class="parking-address" id="parking-address"></div>
-                    <a id="map-link" class="map-link" href="#" target="_blank">
-                        <span>🗺️</span>
-                        Ver en Google Maps
-                    </a>
-                    <button id="clear-location-btn" class="btn btn-danger" style="margin-top: 16px;">
-                        <span>🗑️</span>
-                        Limpiar ubicación
-                    </button>
+                <div id="current-parking" class="hidden">
+                    <!-- La ubicación actual se mostrará aquí -->
+                </div>
+
+                <div class="section-divider"></div>
+
+                <div id="history-section" class="history-section hidden">
+                    <div class="history-header">
+                        <h3 class="history-title">Historial de ubicaciones</h3>
+                        <button id="history-toggle" class="history-toggle">
+                            <span id="history-toggle-text">Mostrar</span> (<span id="history-count">0</span>)
+                        </button>
+                    </div>
+                    <div id="history-list" class="history-list hidden">
+                        <!-- El historial se mostrará aquí -->
+                    </div>
                 </div>
             </div>
         </div>
@@ -435,7 +569,7 @@
     <script type="module">
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
         import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, signOut, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
-        import { getFirestore, doc, setDoc, getDoc, deleteDoc } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+        import { getFirestore, collection, addDoc, query, where, orderBy, limit, getDocs, deleteDoc, doc } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 
         // Firebase configuration
         const firebaseConfig = {
@@ -467,16 +601,19 @@
         const saveBtnText = document.getElementById('save-btn-text');
         const saveBtnIcon = document.getElementById('save-btn-icon');
         const saveLoading = document.getElementById('save-loading');
-        const parkingInfo = document.getElementById('parking-info');
-        const parkingTime = document.getElementById('parking-time');
-        const parkingAddress = document.getElementById('parking-address');
-        const mapLink = document.getElementById('map-link');
-        const clearLocationBtn = document.getElementById('clear-location-btn');
+        const currentParking = document.getElementById('current-parking');
+        const historySection = document.getElementById('history-section');
+        const historyToggle = document.getElementById('history-toggle');
+        const historyToggleText = document.getElementById('history-toggle-text');
+        const historyCount = document.getElementById('history-count');
+        const historyList = document.getElementById('history-list');
         const userAvatar = document.getElementById('user-avatar');
         const userName = document.getElementById('user-name');
         const status = document.getElementById('status');
 
         let currentUser = null;
+        let allLocations = [];
+        let historyVisible = false;
 
         // Show status message
         function showStatus(message, type = 'success') {
@@ -488,7 +625,6 @@
             }, 4000);
         }
 
-        // Get current location
         function getCurrentLocation() {
             return new Promise((resolve, reject) => {
                 if (!navigator.geolocation) {
@@ -540,6 +676,46 @@
             }
         }
 
+        // Create parking card HTML
+        function createParkingCard(locationData, isCurrent = false, showDeleteButton = true) {
+            const date = new Date(locationData.timestamp);
+            const cardClass = isCurrent ? 'parking-card current' : 'parking-card history-item';
+            const badge = isCurrent ? '<div class="current-badge">📍 Ubicación actual</div>' : '';
+            
+            const deleteButton = showDeleteButton ? `
+                <button class="btn btn-danger btn-small" onclick="deleteLocation('${locationData.id}')">
+                    <span>🗑️</span>
+                    Eliminar
+                </button>
+            ` : '';
+
+            return `
+                <div class="${cardClass}">
+                    ${badge}
+                    <div class="parking-time">
+                        Guardado el ${date.toLocaleDateString('es-ES', {
+                            weekday: 'long',
+                            year: 'numeric',
+                            month: 'long',
+                            day: 'numeric'
+                        })} a las ${date.toLocaleTimeString('es-ES', {
+                            hour: '2-digit',
+                            minute: '2-digit'
+                        })}
+                    </div>
+                    <div class="parking-address">${locationData.address}</div>
+                    <div class="parking-actions">
+                        <a href="https://www.google.com/maps?q=${locationData.latitude},${locationData.longitude}" 
+                           target="_blank" class="map-link">
+                            <span>🗺️</span>
+                            Ver en Google Maps
+                        </a>
+                        ${deleteButton}
+                    </div>
+                </div>
+            `;
+        }
+
         // Save parking location
         async function saveParkingLocation() {
             if (!currentUser) return;
@@ -568,16 +744,18 @@
                 };
 
                 showStatus('☁️ Guardando en la nube...', 'loading');
-                await setDoc(doc(db, 'parking_locations', currentUser.uid), parkingData);
+                
+                // Agregar nueva ubicación a la colección
+                await addDoc(collection(db, 'parking_locations'), parkingData);
 
                 showStatus('✅ ¡Ubicación guardada exitosamente!', 'success');
-                await loadParkingInfo();
+                await loadAllLocations();
 
             } catch (error) {
                 console.error('Error saving location:', error);
                 showStatus(error.message || 'Error al guardar la ubicación. Inténtalo de nuevo.', 'error');
             } finally {
-                saveBtnText.textContent = 'Guardar ubicación actual';
+                saveBtnText.textContent = 'Guardar nueva ubicación';
                 saveBtnIcon.classList.remove('hidden');
                 saveLoading.classList.add('hidden');
                 saveLocationBtn.disabled = false;
@@ -585,58 +763,91 @@
             }
         }
 
-     // Load parking info
-        async function loadParkingInfo() {
+        // Load all parking locations
+        async function loadAllLocations() {
             if (!currentUser) return;
 
             try {
-                const docRef = doc(db, 'parking_locations', currentUser.uid);
-                const docSnap = await getDoc(docRef);
+                const q = query(
+                    collection(db, 'parking_locations'), 
+                    where('userId', '==', currentUser.uid),
+                    orderBy('timestamp', 'desc')
+                );
+                
+                const querySnapshot = await getDocs(q);
+                allLocations = [];
+                
+                querySnapshot.forEach((doc) => {
+                    allLocations.push({
+                        id: doc.id,
+                        ...doc.data()
+                    });
+                });
 
-                if (docSnap.exists()) {
-                    const data = docSnap.data();
-                    const date = new Date(data.timestamp);
-                    
-                    parkingTime.textContent = `Guardado el ${date.toLocaleDateString('es-ES', {
-                        weekday: 'long',
-                        year: 'numeric',
-                        month: 'long',
-                        day: 'numeric'
-                    })} a las ${date.toLocaleTimeString('es-ES', {
-                        hour: '2-digit',
-                        minute: '2-digit'
-                    })}`;
-                    
-                    parkingAddress.textContent = data.address;
-                    mapLink.href = `https://www.google.com/maps?q=${data.latitude},${data.longitude}`;
-                    
-                    parkingInfo.classList.remove('hidden');
-                } else {
-                    parkingInfo.classList.add('hidden');
-                }
+                updateUI();
+
             } catch (error) {
-                console.error('Error loading parking info:', error);
-                showStatus('Error al cargar la información del estacionamiento.', 'error');
+                console.error('Error loading locations:', error);
+                showStatus('Error al cargar las ubicaciones.', 'error');
             }
         }
 
-        // Clear parking location
-        async function clearParkingLocation() {
-            if (!currentUser) return;
+        // Update UI with current and historical locations
+        function updateUI() {
+            if (allLocations.length === 0) {
+                currentParking.classList.add('hidden');
+                historySection.classList.add('hidden');
+                return;
+            }
 
-            if (!confirm('¿Estás seguro de que quieres eliminar la ubicación guardada?')) {
+            // Mostrar ubicación actual (la más reciente)
+            const currentLocation = allLocations[0];
+            currentParking.innerHTML = createParkingCard(currentLocation, true, allLocations.length > 1);
+            currentParking.classList.remove('hidden');
+
+            // Mostrar historial si hay más de una ubicación
+            const historicalLocations = allLocations.slice(1);
+            
+            if (historicalLocations.length > 0) {
+                historySection.classList.remove('hidden');
+                historyCount.textContent = historicalLocations.length;
+                
+                if (historyVisible) {
+                    historyList.innerHTML = historicalLocations
+                        .map(location => createParkingCard(location, false, true))
+                        .join('');
+                    historyList.classList.remove('hidden');
+                    historyToggleText.textContent = 'Ocultar';
+                } else {
+                    historyList.classList.add('hidden');
+                    historyToggleText.textContent = 'Mostrar';
+                }
+            } else {
+                historySection.classList.add('hidden');
+            }
+        }
+
+        // Toggle history visibility
+        function toggleHistory() {
+            historyVisible = !historyVisible;
+            updateUI();
+        }
+
+        // Delete a specific location
+        window.deleteLocation = async function(locationId) {
+            if (!confirm('¿Estás seguro de que quieres eliminar esta ubicación?')) {
                 return;
             }
 
             try {
-                await deleteDoc(doc(db, 'parking_locations', currentUser.uid));
-                parkingInfo.classList.add('hidden');
+                await deleteDoc(doc(db, 'parking_locations', locationId));
                 showStatus('🗑️ Ubicación eliminada exitosamente.', 'success');
+                await loadAllLocations();
             } catch (error) {
-                console.error('Error clearing location:', error);
+                console.error('Error deleting location:', error);
                 showStatus('Error al eliminar la ubicación.', 'error');
             }
-        }
+        };
 
         // Authentication with fallback
         async function signInWithGoogle() {
@@ -699,19 +910,21 @@
         }
 
         // Update UI based on auth state
-        function updateUI(user) {
+        function updateAuthUI(user) {
             if (user) {
                 currentUser = user;
                 authSection.classList.add('hidden');
                 appContent.classList.remove('hidden');
                 userAvatar.src = user.photoURL || 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40"><circle cx="20" cy="20" r="20" fill="%23e2e8f0"/><circle cx="20" cy="16" r="6" fill="%23a0aec0"/><path d="M20 24c-8 0-12 4-12 8v8h24v-8c0-4-4-8-12-8z" fill="%23a0aec0"/></svg>';
                 userName.textContent = user.displayName || user.email || 'Usuario';
-                loadParkingInfo();
+                loadAllLocations();
             } else {
                 currentUser = null;
                 authSection.classList.remove('hidden');
                 appContent.classList.add('hidden');
-                parkingInfo.classList.add('hidden');
+                currentParking.classList.add('hidden');
+                historySection.classList.add('hidden');
+                allLocations = [];
             }
         }
 
@@ -719,10 +932,10 @@
         loginBtn.addEventListener('click', signInWithGoogle);
         logoutBtn.addEventListener('click', signOutUser);
         saveLocationBtn.addEventListener('click', saveParkingLocation);
-        clearLocationBtn.addEventListener('click', clearParkingLocation);
+        historyToggle.addEventListener('click', toggleHistory);
 
         // Auth state observer
-        onAuthStateChanged(auth, updateUI);
+        onAuthStateChanged(auth, updateAuthUI);
 
         // Check for redirect result on page load
         getRedirectResult(auth).then((result) => {
