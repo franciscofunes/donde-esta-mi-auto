@@ -625,6 +625,7 @@
             }, 4000);
         }
 
+        // Get current location
         function getCurrentLocation() {
             return new Promise((resolve, reject) => {
                 if (!navigator.geolocation) {
@@ -768,10 +769,10 @@
             if (!currentUser) return;
 
             try {
+                // Simplificamos: solo filtrar por userId, luego ordenar en memoria
                 const q = query(
                     collection(db, 'parking_locations'), 
-                    where('userId', '==', currentUser.uid),
-                    orderBy('timestamp', 'desc')
+                    where('userId', '==', currentUser.uid)
                 );
                 
                 const querySnapshot = await getDocs(q);
@@ -783,6 +784,9 @@
                         ...doc.data()
                     });
                 });
+
+                // Ordenar por timestamp en memoria (más reciente primero)
+                allLocations.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
 
                 updateUI();
 
