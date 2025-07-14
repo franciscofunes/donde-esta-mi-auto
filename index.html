@@ -519,7 +519,7 @@
             
             <div id="auth-section" class="auth-section">
                 <p class="auth-description">
-                    Inicia sesión para guardar la ubicación de tu auto de forma segura en la nube
+                    Iniciá sesión para guardar la ubicación de tu auto de forma segura en la nube
                 </p>
                 <button id="login-btn" class="btn btn-primary pulse">
                     <span>🔐</span>
@@ -540,7 +540,7 @@
                 
                 <button id="save-location-btn" class="btn btn-success">
                     <span id="save-btn-icon">📍</span>
-                    <span id="save-btn-text">Save current location</span>
+                    <span id="save-btn-text">Guardar ubicación actual</span>
                     <div id="save-loading" class="loading-spinner hidden"></div>
                 </button>
                 
@@ -552,7 +552,7 @@
 
                 <div id="history-section" class="history-section hidden">
                     <div class="history-header">
-                        <h3 class="history-title">Location History</h3>
+                        <h3 class="history-title">Historial de ubicaciones</h3>
                         <button id="history-toggle" class="history-toggle">
                             <span id="history-toggle-text">Mostrar</span> (<span id="history-count">0</span>)
                         </button>
@@ -681,12 +681,12 @@
         function createParkingCard(locationData, isCurrent = false, showDeleteButton = true) {
             const date = new Date(locationData.timestamp);
             const cardClass = isCurrent ? 'parking-card current' : 'parking-card history-item';
-            const badge = isCurrent ? '<div class="current-badge">📍 Current Location</div>' : '';
+            const badge = isCurrent ? '<div class="current-badge">📍 Ubicación actual</div>' : '';
             
             const deleteButton = showDeleteButton ? `
                 <button class="btn btn-danger btn-small" onclick="deleteLocation('${locationData.id}', ${isCurrent})">
                     <span>🗑️</span>
-                    Delete
+                    Eliminar
                 </button>
             ` : '';
 
@@ -694,12 +694,12 @@
                 <div class="${cardClass}">
                     ${badge}
                     <div class="parking-time">
-                        Saved on ${date.toLocaleDateString('en-US', {
+                        Guardado el ${date.toLocaleDateString('es-AR', {
                             weekday: 'long',
                             year: 'numeric',
                             month: 'long',
                             day: 'numeric'
-                        })} at ${date.toLocaleTimeString('en-US', {
+                        })} a las ${date.toLocaleTimeString('es-AR', {
                             hour: '2-digit',
                             minute: '2-digit'
                         })}
@@ -709,7 +709,7 @@
                         <a href="https://www.google.com/maps?q=${locationData.latitude},${locationData.longitude}" 
                            target="_blank" class="map-link">
                             <span>🗺️</span>
-                            View on Google Maps
+                            Ver en Google Maps
                         </a>
                         ${deleteButton}
                     </div>
@@ -722,22 +722,22 @@
             if (!currentUser) return;
 
             try {
-                saveBtnText.textContent = 'Getting location...';
+                saveBtnText.textContent = 'Obteniendo ubicación...';
                 saveBtnIcon.classList.add('hidden');
                 saveLoading.classList.remove('hidden');
                 saveLocationBtn.disabled = true;
                 saveLocationBtn.classList.add('disabled');
 
-                showStatus('🌍 Getting your current location...', 'loading');
+                showStatus('🌍 Obteniendo tu ubicación actual...', 'loading');
 
                 const position = await getCurrentLocation();
                 const { latitude, longitude } = position.coords;
 
-                showStatus('📍 Getting address...', 'loading');
+                showStatus('📍 Obteniendo dirección...', 'loading');
                 const address = await getAddressFromCoords(latitude, longitude);
 
                 // First, mark all existing locations as not current
-                showStatus('☁️ Updating locations...', 'loading');
+                showStatus('☁️ Actualizando ubicaciones...', 'loading');
                 const batch = [];
                 for (const location of allLocations) {
                     if (location.isCurrent) {
@@ -760,19 +760,19 @@
                     isCurrent: true // Mark this as the current location
                 };
 
-                showStatus('☁️ Saving to cloud...', 'loading');
+                showStatus('☁️ Guardando en la nube...', 'loading');
                 
                 // Add new location to collection
                 await addDoc(collection(db, 'parking_locations'), parkingData);
 
-                showStatus('✅ Location saved successfully!', 'success');
+                showStatus('✅ ¡Ubicación guardada exitosamente!', 'success');
                 await loadAllLocations();
 
             } catch (error) {
                 console.error('Error saving location:', error);
-                showStatus(error.message || 'Error saving location. Please try again.', 'error');
+                showStatus(error.message || 'Error al guardar la ubicación. Intentá de nuevo.', 'error');
             } finally {
-                saveBtnText.textContent = 'Save current location';
+                saveBtnText.textContent = 'Guardar ubicación actual';
                 saveBtnIcon.classList.remove('hidden');
                 saveLoading.classList.add('hidden');
                 saveLocationBtn.disabled = false;
@@ -842,10 +842,10 @@
                         .map(location => createParkingCard(location, false, true))
                         .join('');
                     historyList.classList.remove('hidden');
-                    historyToggleText.textContent = 'Hide';
+                    historyToggleText.textContent = 'Ocultar';
                 } else {
                     historyList.classList.add('hidden');
-                    historyToggleText.textContent = 'Show';
+                    historyToggleText.textContent = 'Mostrar';
                 }
             } else {
                 historySection.classList.add('hidden');
@@ -860,7 +860,7 @@
 
         // Delete a specific location
         window.deleteLocation = async function(locationId, isCurrent = false) {
-            if (!confirm('Are you sure you want to delete this location?')) {
+            if (!confirm('¿Estás seguro de que querés eliminar esta ubicación?')) {
                 return;
             }
 
@@ -871,18 +871,18 @@
                 if (isCurrent) {
                     const remainingLocations = allLocations.filter(loc => loc.id !== locationId);
                     
-                    if (remainingLocations.length > 0 && confirm('You deleted your current location. Do you want to set the most recent location as your new current location?')) {
+                    if (remainingLocations.length > 0 && confirm('Eliminaste tu ubicación actual. ¿Querés establecer la ubicación más reciente como tu nueva ubicación actual?')) {
                         // Find the most recent remaining location
                         const mostRecent = remainingLocations.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))[0];
                         await updateDoc(doc(db, 'parking_locations', mostRecent.id), { isCurrent: true });
                     }
                 }
                 
-                showStatus('🗑️ Location deleted successfully.', 'success');
+                showStatus('🗑️ Ubicación eliminada exitosamente.', 'success');
                 await loadAllLocations();
             } catch (error) {
                 console.error('Error deleting location:', error);
-                showStatus('Error deleting location.', 'error');
+                showStatus('Error al eliminar la ubicación.', 'error');
             }
         };
 
@@ -917,7 +917,7 @@
                 
                 switch(error.code) {
                     case 'auth/unauthorized-domain':
-                        errorMessage += 'Dominio no autorizado. Contacta al administrador.';
+                        errorMessage += 'Dominio no autorizado. Contactá al administrador.';
                         break;
                     case 'auth/operation-not-allowed':
                         errorMessage += 'Método de autenticación no habilitado.';
@@ -926,7 +926,7 @@
                         errorMessage = 'Inicio de sesión cancelado.';
                         break;
                     default:
-                        errorMessage += 'Inténtalo de nuevo.';
+                        errorMessage += 'Intentá de nuevo.';
                 }
                 
                 showStatus(errorMessage, 'error');
